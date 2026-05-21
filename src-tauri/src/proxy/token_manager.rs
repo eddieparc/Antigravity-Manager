@@ -1428,8 +1428,13 @@ impl TokenManager {
                         let key = self
                             .email_to_account_id(&bound_token.email)
                             .unwrap_or_else(|| bound_token.account_id.clone());
-                        // [FIX] Pass None for specific model wait time if not applicable
-                        let reset_sec = self.rate_limit_tracker.get_remaining_wait(&key, None);
+                        // [PATCH] Check model-level lock too, not just account-level.
+                        // Original passed `None` which missed model-level lockouts recorded
+                        // via `set_precise_lockout`, causing sticky sessions to stay bound
+                        // to a rate-limited account on a specific model and loop on 429.
+                        let reset_sec = self
+                            .rate_limit_tracker
+                            .get_remaining_wait(&key, Some(&normalized_target));
                         if reset_sec > 0 {
                             // 【修复 Issue #284】立即解绑并切换账号，不再阻塞等待
                             // 原因：阻塞等待会导致并发请求时客户端 socket 超时 (UND_ERR_SOCKET)
