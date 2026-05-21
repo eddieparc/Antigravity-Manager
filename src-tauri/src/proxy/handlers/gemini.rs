@@ -571,6 +571,22 @@ pub async fn handle_generate(
             .await
             .unwrap_or_else(|_| format!("HTTP {}", status_code));
         last_error = format!("HTTP {}: {}", status_code, error_text);
+
+        // [PATCH] Record the rate limit on this (account, model) pair so future
+        // requests see the lock. Claude/OpenAI handlers already do this; Gemini
+        // handler historically missed it, causing sticky sessions to loop on 429
+        // because no lock was ever set. mark_rate_limited_async internally filters
+        // statuses (only 429/404/500/503/529 take effect) so this is a safe no-op
+        // for transient non-lockable errors.
+        token_manager
+            .mark_rate_limited_async(
+                &email,
+                status_code,
+                None,
+                &error_text,
+                Some(config.final_model.as_str()),
+            )
+            .await;
         if debug_logger::is_enabled(&debug_cfg) {
             let payload = json!({
                 "kind": "upstream_response_error",
