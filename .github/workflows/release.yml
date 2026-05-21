@@ -53,9 +53,6 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Build the app
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- ${{ matrix.args }}
 
       # 3. 处理 macOS 架构重命名冲突 (解决 422 Already Exists)
